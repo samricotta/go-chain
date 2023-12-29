@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+option go_package = "github.com/samricotta/go-chain/blockchain/v1";
+
+package blockchain.v1;
+
+message Block {
+	int32 index = 1;
+	string timestamp = 2;
+	string data = 3;
+	string previous_hash = 4;
+	string hash = 5;
+}
