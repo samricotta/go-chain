@@ -2,11 +2,12 @@ package blockchain
 
 
 type Transaction struct {
+	Id  string
 	Sender string
 	Reciever string
 	Amount float64
 	Signature string
-	Timestamp 
+	Timestamp  string
 } 
 
 type TransactionPool struct {
@@ -53,22 +54,25 @@ func(t *transaction)IsValidTransaction() bool {
 		return false
 	}
 
-	if t.Receiver {
-}
-
-
+	if IsDoubleSpend {
+		fmt.println("Transaction is a double spend")
+		return false
+	}
 }
 
 func(t *transaction)Sign() string {
 	
 }
 
-func(t *transaction)AddTransactionToBlock() {
-	
+func(t *transaction)AddTransactionToBlock(block Block) {
+	t.transaction.IsValidTransaction() {
+		fmt.Println("Transaction is valid")
+		block.Transaction = append(block.Transaction, t.transaction)
+	}
 }
 
-func(t *transaction)GetTransactionByIndex() {
-
+func(t *transaction)GetTransactionByIndex(index int32) {
+ return t.transaction[index]
 }
 
 func(tp *TransactionPool)AddToTransactionPool(transaction *Transaction) bool {
@@ -87,3 +91,34 @@ func(tp *TransactionPool)AddToTransactionPool(transaction *Transaction) bool {
 func BroadcastTransactionToNetwork(transaction){
 
 }
+
+func(t *Transaction)IsDoubleSpend(tp *TransactionPool) bool {
+	for _, tp := range tp.Transactions{
+		if t.hasSameInput(tp) {
+			return true
+		}
+	}
+
+	for _, block := range bc.Blocks {
+		if t.hasSameInput(block.Transaction) {
+			return true
+		}
+	}
+}
+
+func(t *Transaction)hasSameInput(ot OtherTransaction) bool {
+	if t.Sender == ot.Sender && t.Reciever == ot.Reciever && t.Amount == ot.Amount {
+		return true
+	}
+	return false
+}
+
+func(t *Transaction)GetTransactionSize() int {
+	jsonBytes, err := json.Marshal(t.transaction)
+	if err != nil {
+		return err
+	}
+	length := len(jsonBytes)
+	return length
+}
+

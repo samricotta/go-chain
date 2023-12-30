@@ -9,8 +9,10 @@ import (
 	blockchain "github.com/samricotta/go-chain/blockchain/v1"
 )
 
+const MAX_BLOCK_SIZE = 1e6
+
 type Blockchain struct {
-    Blocks []*blockchain.Block
+	Blocks []*blockchain.Block
 }
 
 func calculateBlockHash(block *blockchain.Block) string {
@@ -28,17 +30,17 @@ func calculateBlockHash(block *blockchain.Block) string {
 
 func NewBlock(data string, previousHash string, lastIndex int32) *blockchain.Block {
 	block := &blockchain.Block{
-		Index:     lastIndex + 1,
-		Timestamp: time.Now().String(),
-		Data: 	data,
-		PreviousHash:  previousHash,
+		Index:        lastIndex + 1,
+		Timestamp:    time.Now().String(),
+		Data:         data,
+		PreviousHash: previousHash,
 	}
 	block.Hash = calculateBlockHash(block)
-    return block
+	return block
 }
 
 func (bc *Blockchain) AddBlock(data string) {
-	//get previous block from the length of block 
+	//get previous block from the length of block
 	previousBlock := bc.Blocks[len(bc.Blocks)-1]
 	//create new block with data, previous hash and index
 	newBlock := NewBlock(data, previousBlock.Hash, previousBlock.Index)
@@ -58,6 +60,5 @@ func (bc *Blockchain) GetBlockByIndex(index int32) *blockchain.Block {
 			return block
 		}
 	}
-    return nil
+	return nil
 }
-
