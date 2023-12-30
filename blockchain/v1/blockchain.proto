@@ -19,7 +19,16 @@ message Transaction {
     string signature = 4;
 }
 
+message Receiver {
+    Account account = 1;
+}
+
 message Sender {
+	Account account = 1;
+}
+
+
+message Account {
 	string name = 1;
 	string address = 2;
 	double balance = 3;

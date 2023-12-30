@@ -11,3 +11,14 @@ type Sender struct {
 }
 
 
+func NewSender(name string, address string, balance float64, privateKey []byte, publicKey []byte) *Sender {
+	sender := &Sender{
+		Name:          name,
+		Address:       address,
+		Balance:       balance,
+		PrivateKey:    privateKey,
+		PublicKey:     publicKey,
+	}
+	return sender
+}
+
