@@ -7,7 +7,23 @@ package blockchain.v1;
 message Block {
 	int32 index = 1;
 	string timestamp = 2;
-	string data = 3;
+	bytes data = 3;
 	string previous_hash = 4;
 	string hash = 5;
+}
+
+message Transaction {
+    string sender = 1;
+    string receiver = 2;
+    double amount = 3;
+    string signature = 4;
+}
+
+message Sender {
+	string name = 1;
+	string address = 2;
+	double balance = 3;
+	bytes private_key = 4;
+	bytes public_key = 5;
+	repeated Transaction transactions = 6;
 }
