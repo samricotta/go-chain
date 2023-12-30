@@ -1,12 +1,15 @@
 package blockchain
 
 import (
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"math/big"
 	"math/rand"
+
+	"github.com/cosmos/btcutil/bech32"
 )
 
 type Account struct {
@@ -76,7 +79,30 @@ func (a *Account) GeneratePublicKey() (string, error) {
 	return hex.EncodeToString(pubKey), nil
 }
 
-func (a *Account) GenerateAddress() string {
+func (a *Account) GenerateAddress() (string, error) {
+	pubKeyBytes, err := hex.DecodeString(a.publicKey)
+	if err != nil {
+		return "", err
+	}
+	hash := sha256.Sum256(pubKeyBytes)
+
+
+	// convert the first 20 bytes of the hash to a bech32 string
+	// each byte is 8 bits, we then convert 8 bits to 5 bits
+	//
+	//The pad argument determines how the function should handle 
+	//a situation where the input data does not contain a whole number of groups
+	address, err := bech32.ConvertBits(hash[:20], 8, 5, true)
+	if err != nil {
+		return "", err
+	}
+
+	bech32Address, err := bech32.Encode("bc", address)
+	if err != nil {
+		return "", err
+	}
+
+	return bech32Address, nil
 }
 
 func generateRandomNumber() (*big.Int, error) {
