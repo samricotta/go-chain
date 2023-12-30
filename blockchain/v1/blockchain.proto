@@ -13,7 +13,7 @@ message Block {
 }
 
 message Transaction {
-    string sender = 1;
+    Sender sender = 1;
     string receiver = 2;
     double amount = 3;
     string signature = 4;

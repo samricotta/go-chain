@@ -17,7 +17,7 @@ type Blockchain struct {
 
 func calculateBlockHash(block *blockchain.Block) string {
 	// Concatenate block data into a single string. - shorthand for "integer to ASCII"
-	record := strconv.Itoa(int(block.Index)) + block.Timestamp + block.Data + block.PreviousHash
+	record := strconv.Itoa(int(block.Index)) + block.Timestamp + string(block.Data) + block.PreviousHash
 	// Inititalise new SHA256 hashing object.
 	h := sha256.New()
 	// Write the record string to the hashing object.

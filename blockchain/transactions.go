@@ -1,8 +1,16 @@
 package blockchain
 
 import (
+	"crypto/ecdsa"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 
 	blockchain "github.com/samricotta/go-chain/blockchain/v1"
@@ -10,7 +18,7 @@ import (
 
 type Transaction struct {
 	Id        string
-	Sender    string
+	Sender    *Sender
 	Reciever  string
 	Amount    float64
 	Signature string
@@ -21,7 +29,7 @@ type TransactionPool struct {
 	Transactions []*Transaction
 }
 
-func NewTransaction(sender string, reciever string, amount float64, signature string) *Transaction {
+func NewTransaction(sender *Sender, reciever string, amount float64, signature string) *Transaction {
 	transaction := &Transaction{
 		Sender:    sender,
 		Reciever:  reciever,
@@ -31,16 +39,16 @@ func NewTransaction(sender string, reciever string, amount float64, signature st
 	return transaction
 }
 
-func (t *Transaction) IsValidTransaction(tp *TransactionPool) bool {
+func (t *Transaction) IsValidTransaction(tp *TransactionPool, bc *blockchain.Block) bool {
 	if t == nil {
 		return false
 	}
 
-	if t.Sender == "" || t.Reciever == "" || t.Amount == 0 || t.Signature == "" {
+	if t.Sender == nil || t.Reciever == "" || t.Amount == 0 || t.Signature == "" {
 		return false
 	}
 
-	if strings.TrimSpace(t.Sender) != "" {
+	if strings.TrimSpace(t.Sender.Name) != "" {
 		fmt.Println("Sender is not an empty string and not just whitespace")
 		return false
 	}
@@ -60,40 +68,62 @@ func (t *Transaction) IsValidTransaction(tp *TransactionPool) bool {
 		return false
 	}
 
-	if t.IsDoubleSpend(tp) {
+	if t.IsDoubleSpend(tp, bc) {
 		fmt.Println("Transaction is a double spend")
 		return false
 	}
 }
 
-func (t *Transaction) Sign() string {
+func (t *Transaction) Sign() ([]byte, error) {
+	jb, err := json.Marshal(t)
+	if err != nil {
+		return []byte{}, err
+	}
 
+	calculateTransactionHash(jb)
+	pk, err := ConvertPrivateKey(t.Sender.PrivateKey)
+	if err != nil {
+		return []byte{}, err
+	}
+	signed, err := SignTransaction(jb, pk)
+	if err != nil {
+		return []byte{}, err
+	}
+	return signed, nil
 }
 
-func (t *Transaction) AddTransactionToBlock(block *blockchain.Block) bool {
-	if t.IsValidTransaction() {
+func (t *Transaction) AddTransactionToBlock(tp *TransactionPool, block *blockchain.Block) bool {
+	if t.IsValidTransaction(tp, block) {
 		fmt.Println("Transaction is invalid")
 		return false
 	}
-	if t.GetTransactionSize() > CalculateBlockSize(block) {
+	size, err := t.GetTransactionSize()
+	if err != nil {
+		fmt.Println("Error getting transaction size:", err)
+		return false
+	}
+	if size > CalculateBlockSize(block) {
 		fmt.Println("Transaction is too large")
 		return false
 	}
 
 	mb, err := json.Marshal(t)
 	if err != nil {
-			return false
+		return false
 	}
 	block.Data = append(block.Data, mb...)
-	return true 
+	return true
 }
 
-func (t *Transaction) GetTransactionByIndex(index int32) {
-	return t[index]
+func (tp *TransactionPool) GetTransactionByIndex(index int32) (*Transaction, error) {
+	if index < 0 || index >= int32(len(tp.Transactions)) {
+		return nil, fmt.Errorf("Index out of range")
+	}
+	return tp.Transactions[index], nil
 }
 
 func (tp *TransactionPool) AddToTransactionPool(t *Transaction) bool {
-	if t.IsValidTransaction() {
+	if t.IsValidTransaction(tp) {
 		for _, trans := range tp.Transactions {
 			if trans == t {
 				return false
@@ -109,23 +139,21 @@ func BroadcastTransactionToNetwork() {
 
 }
 
-func (t *Transaction) IsDoubleSpend(tp *TransactionPool, bc *Blockchain) bool {
+func (t *Transaction) IsDoubleSpend(tp *TransactionPool, bc *blockchain.Block) bool {
 	for _, tp := range tp.Transactions {
 		if t.hasSameInput(tp) {
 			return true
 		}
 	}
 
-	for _, block := range bc.Blocks {
-		var transactions []*Transaction
-		err := json.Unmarshal(block.Data, &transactions)
-		if err != nil {
-			return false
-		}
-		for _, transaction := range transactions {
-			if t.hasSameInput(transaction) {
-				return true
-			}
+	var transactions []*Transaction
+	err := json.Unmarshal(bc.Data, &transactions)
+	if err != nil {
+		return false
+	}
+	for _, transaction := range transactions {
+		if t.hasSameInput(transaction) {
+			return true
 		}
 	}
 	return false
@@ -138,11 +166,51 @@ func (t *Transaction) hasSameInput(ot *Transaction) bool {
 	return false
 }
 
-func (t *Transaction) GetTransactionSize() int32 {
+func (t *Transaction) GetTransactionSize() (int32, error) {
 	jsonBytes, err := json.Marshal(t)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	length := len(jsonBytes)
-	return int32(length)
+	return int32(length), nil
+}
+
+func calculateTransactionHash(record []byte) string {
+	h := sha256.New()
+	h.Write(record)
+	hashed := h.Sum(nil)
+	return hex.EncodeToString(hashed)
+}
+
+func SignTransaction(transactionHash []byte, privateKey *ecdsa.PrivateKey) (signature []byte, err error) {
+	r, s, err := ecdsa.Sign(rand.Reader, privateKey, transactionHash)
+	if err != nil {
+		return nil, err
+	}
+	signature = append(r.Bytes(), s.Bytes()...)
+	return signature, nil
+}
+
+func VerifySignature(publicKey *ecdsa.PublicKey, transactionHash []byte, signature []byte) bool {
+	var (
+		r = big.NewInt(0).SetBytes(signature[:len(signature)/2])
+		s = big.NewInt(0).SetBytes(signature[len(signature)/2:])
+	)
+
+	// Verify the signature
+	return ecdsa.Verify(publicKey, transactionHash, r, s)
+}
+
+func ConvertPrivateKey(privateKeyBytes []byte) (*ecdsa.PrivateKey, error) {
+	block, _ := pem.Decode(privateKeyBytes)
+	if block == nil {
+		return nil, errors.New("failed to parse PEM block containing the key")
+	}
+
+	privateKey, err := x509.ParseECPrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return privateKey, nil
 }
