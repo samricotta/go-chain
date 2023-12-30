@@ -63,9 +63,9 @@ func (bc *Blockchain) GetBlockByIndex(index int32) *blockchain.Block {
 	return nil
 }
 
-func CalculateBlockSize(*blockchain.Block) int32 {
+func(bc *Blockchain) CalculateBlockSize() int32 {
 	blockSize := 0
-	for _, block := range bc.Blocks{
+	for _, block := range bc.Blocks {
 		 blockSize += len(block.Data)
 	}
 	

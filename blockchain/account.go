@@ -1,6 +1,10 @@
 package blockchain
 
 import (
+	"crypto/x509"
+	"encoding/hex"
+	"encoding/pem"
+	"fmt"
 	"math/big"
 	"math/rand"
 )
@@ -9,18 +13,18 @@ type Account struct {
 	Name         string
 	Address      string
 	Balance      float64
-	private_key  string
-	public_key   string
+	privateKey   string
+	publicKey    string
 	Transactions []*Transaction
 }
 
-func NewAccount(name string, address string, balance float64, private_key string, public_key string) *Account {
+func NewAccount(name string, address string, balance float64, privateKey string, publicKey string) *Account {
 	account := &Account{
-		Name:        name,
-		Address:     address,
-		Balance:     balance,
-		private_key: private_key,
-		public_key:  public_key,
+		Name:       name,
+		Address:    address,
+		Balance:    balance,
+		privateKey: privateKey,
+		publicKey:  publicKey,
 	}
 	return account
 }
@@ -56,7 +60,20 @@ func GeneratePrivateKey() (*big.Int, error) {
 
 	return privateKey, nil
 }
-func (a *Account) GeneratePublicKey() string {
+
+func (a *Account) GeneratePublicKey() (string, error) {
+	block, _ := pem.Decode([]byte(a.privateKey))
+	if block == nil {
+		return "", fmt.Errorf("failed to decode PEM block containing private key")
+	}
+
+	privateKey, err := x509.ParseECPrivateKey(block.Bytes)
+	if err != nil {
+		return "", err
+	}
+
+	pubKey := append(privateKey.PublicKey.X.Bytes(), privateKey.PublicKey.Y.Bytes()...)
+	return hex.EncodeToString(pubKey), nil
 }
 
 func (a *Account) GenerateAddress() string {
@@ -74,7 +91,6 @@ func generateRandomNumber() (*big.Int, error) {
 	return big.NewInt(privateKey), nil
 }
 
+func IsValidPrivateKey(privateKey string) bool {
 
- func IsValidPrivateKey(*Account.privateKey) {
-
- }
+}

@@ -92,26 +92,29 @@ func (t *Transaction) Sign() ([]byte, error) {
 	return signed, nil
 }
 
-func (t *Transaction) AddTransactionToBlock(tp *TransactionPool, block *blockchain.Block) bool {
-	if t.IsValidTransaction(tp, block) {
-		fmt.Println("Transaction is invalid")
-		return false
-	}
-	size, err := t.GetTransactionSize()
-	if err != nil {
-		fmt.Println("Error getting transaction size:", err)
-		return false
-	}
-	if size > CalculateBlockSize(block) {
-		fmt.Println("Transaction is too large")
-		return false
-	}
+func (t *Transaction) AddTransactionToBlock(tp *TransactionPool, blockchain *Blockchain) bool {
+	for _, block := range blockchain.Blocks {
+    	if !t.IsValidTransaction(tp, block) {
+            fmt.Println("Transaction is invalid")
+            return false
+        }
 
-	mb, err := json.Marshal(t)
-	if err != nil {
-		return false
+		size, err := t.GetTransactionSize()
+		if err != nil {
+			fmt.Println("Error getting transaction size:", err)
+			return false
+		}
+		if size > blockchain.CalculateBlockSize() {
+			fmt.Println("Transaction is too large")
+			return false
+		}
+
+		mb, err := json.Marshal(t)
+		if err != nil {
+			return false
+		}
+		block.Data = append(block.Data, mb...)
 	}
-	block.Data = append(block.Data, mb...)
 	return true
 }
 
