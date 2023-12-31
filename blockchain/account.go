@@ -1,13 +1,15 @@
 package blockchain
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"math/big"
-	"math/rand"
 
 	"github.com/cosmos/btcutil/bech32"
 )
@@ -48,20 +50,24 @@ func (a *Account) GetTransactions() []*Transaction {
 	return a.Transactions
 }
 
-func GeneratePrivateKey() (*big.Int, error) {
-	privateKey, err := generateRandomNumber()
+func GeneratePrivateKey() (string, error) {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		return nil, err
+		return "", fmt.Errorf("failed to generate private key: %v", err)
 	}
 
-	for privateKey.Cmp(big.NewInt(0)) == 0 {
-		privateKey, err = generateRandomNumber()
-		if err != nil {
-			return nil, err
-		}
+	der, err := x509.MarshalECPrivateKey(privateKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal private key: %v", err)
 	}
 
-	return privateKey, nil
+	block := &pem.Block{
+		Type:  "EC PRIVATE KEY",
+		Bytes: der,
+	}
+
+	privatePEM := pem.EncodeToMemory(block)
+	return string(privatePEM), nil
 }
 
 func (a *Account) GeneratePublicKey() (string, error) {
@@ -86,11 +92,10 @@ func (a *Account) GenerateAddress() (string, error) {
 	}
 	hash := sha256.Sum256(pubKeyBytes)
 
-
 	// convert the first 20 bytes of the hash to a bech32 string
 	// each byte is 8 bits, we then convert 8 bits to 5 bits
 	//
-	//The pad argument determines how the function should handle 
+	//The pad argument determines how the function should handle
 	//a situation where the input data does not contain a whole number of groups
 	address, err := bech32.ConvertBits(hash[:20], 8, 5, true)
 	if err != nil {
@@ -106,17 +111,52 @@ func (a *Account) GenerateAddress() (string, error) {
 }
 
 func generateRandomNumber() (*big.Int, error) {
-	upperLimit := new(big.Int).Lsh(big.NewInt(1), 256).Int64()
+	upperLimit := new(big.Int).Lsh(big.NewInt(1), 256)
+	return rand.Int(rand.Reader, upperLimit)
+}
 
-	privateKey := rand.Int63n(upperLimit)
-
-	for privateKey == 0 {
-		privateKey = rand.Int63n(upperLimit)
+func IsValidKey(key string) bool {
+	if !isHexString(key) {
+		fmt.Println("The key is not a valid hexadecimal string")
+		return false
 	}
-
-	return big.NewInt(privateKey), nil
+	if !isCorrectLength([]byte(key)) {
+		fmt.Println("The key is not the correct length")
+		return false
+	}
+	// if !isValidOnCurve([]byte(key)) {
+	// 	fmt.Println("The key is not a valid public key")
+	// 	return false
+	// }
+	return true
 }
 
-func IsValidPrivateKey(privateKey string) bool {
-
+func isHexString(key string) bool {
+	dst := make([]byte, hex.DecodedLen(len(key)))
+	_, err := hex.Decode(dst, []byte(key))
+	if err != nil {
+		fmt.Print("The key is not a valid hexadecimal string")
+		return false
+	}
+	return true
 }
+
+func isCorrectLength(keyBytes []byte) bool {
+	// For example, using the P256 curve which expects 64 bytes for an uncompressed public key
+	return len(keyBytes) == 2*elliptic.P256().Params().BitSize/8
+}
+
+// func isValidOnCurve(keyBytes []byte) bool {
+// 	pubKey, err := x509.ParsePKIXPublicKey(keyBytes)
+// 	if err != nil {
+// 		return false
+// 	}
+
+// 	ecPubKey, ok := pubKey.(*ecdsa.PublicKey)
+// 	if !ok {
+// 		return false
+// 	}
+
+// 	// Check if the key is on the curve
+// 	return ecPubKey.Curve.IsOnCurve(ecPubKey.X, ecPubKey.Y)
+// }

@@ -28,18 +28,18 @@ func calculateBlockHash(block *blockchain.Block) string {
 	return hex.EncodeToString(hashed)
 }
 
-func NewBlock(data string, previousHash string, lastIndex int32) *blockchain.Block {
+func NewBlock(data []byte, previousHash string, lastIndex int32) *blockchain.Block {
 	block := &blockchain.Block{
 		Index:        lastIndex + 1,
 		Timestamp:    time.Now().String(),
-		Data:         data,
+		Data:         data,     
 		PreviousHash: previousHash,
 	}
 	block.Hash = calculateBlockHash(block)
 	return block
 }
 
-func (bc *Blockchain) AddBlock(data string) {
+func (bc *Blockchain) AddBlock(data []byte) {
 	//get previous block from the length of block
 	previousBlock := bc.Blocks[len(bc.Blocks)-1]
 	//create new block with data, previous hash and index
@@ -50,7 +50,7 @@ func (bc *Blockchain) AddBlock(data string) {
 
 func (bc *Blockchain) Genesis() {
 	//create genesis block with data, previous hash and index
-	bc.Blocks = append(bc.Blocks, NewBlock("Genesis Block", "", 0))
+	bc.Blocks = append(bc.Blocks, NewBlock([]byte("Genesis Block"), "", 0))
 }
 
 func (bc *Blockchain) GetBlockByIndex(index int32) *blockchain.Block {

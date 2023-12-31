@@ -72,6 +72,7 @@ func (t *Transaction) IsValidTransaction(tp *TransactionPool, bc *blockchain.Blo
 		fmt.Println("Transaction is a double spend")
 		return false
 	}
+	return true
 }
 
 func (t *Transaction) Sign() ([]byte, error) {
@@ -125,8 +126,8 @@ func (tp *TransactionPool) GetTransactionByIndex(index int32) (*Transaction, err
 	return tp.Transactions[index], nil
 }
 
-func (tp *TransactionPool) AddToTransactionPool(t *Transaction) bool {
-	if t.IsValidTransaction(tp) {
+func (tp *TransactionPool) AddToTransactionPool(t *Transaction, bc *blockchain.Block) bool {
+	if t.IsValidTransaction(tp, bc) {
 		for _, trans := range tp.Transactions {
 			if trans == t {
 				return false
